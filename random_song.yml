@@ -1,0 +1,30 @@
+---
+- name: Pick a random song and show 3 lines
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    lyrics_dir: "./lyrics"
+
+  tasks:
+    - name: Find all lyrics files
+      find:
+        paths: "{{ lyrics_dir }}"
+        patterns: "*.txt"
+        recurse: no
+      register: song_files
+
+    - name: Pick a random song file
+      set_fact:
+        random_song: "{{ song_files.files | random }}"
+
+    - name: Read the selected song (first 3 lines)
+      shell: head -n 3 "{{ random_song.path }}"
+      register: song_preview
+
+    - name: Display selected song and lines
+      debug:
+        msg: >
+          "{{ 'Random Song: ' ~ (random_song.path | basename) ~ ' ---\n' ~ song_preview.stdout }}"
+
