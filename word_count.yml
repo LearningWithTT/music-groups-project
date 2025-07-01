@@ -1,0 +1,5 @@
+- name: Count lines in a lyrics file
+  shell: wc -l < "{{ item.path }}"
+  register: line_count_result
+  loop: "{{ lyric_files.files }}"
+

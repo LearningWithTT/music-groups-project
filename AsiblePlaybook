@@ -1,0 +1,56 @@
+~/music-groups-project/
+├── group_guesser.yml      
+├── destinys_child/
+│   ├── survivor.txt
+│   └── ...
+├── nsync/
+│   └── ...
+├── spice_girls/
+│   └── ...
+├── kiss/
+│   └── ...
+
+---
+- name: Guess the group from lyrics
+  hosts: localhost
+  gather_facts: no
+  vars:
+    lyrics_path: "./"
+    keyword_map:
+      destinys_child: ["survivor", "say my name", "cater to you"]
+      spice_girls: ["wannabe", "spice up", "goodbye"]
+      nsync: ["bye bye bye", "tearing up", "it's gonna be me"]
+      kiss: ["rock and roll", "detroit", "beth"]
+
+  tasks:
+    - name: Find all song lyrics
+      find:
+        paths: "{{ lyrics_path }}"
+        patterns: "*.txt"
+        recurse: yes
+      register: lyric_files
+
+    - name: Read and analyze lyrics
+      command: cat "{{ item.path }}"
+      loop: "{{ lyric_files.files }}"
+      register: lyric_contents
+
+    - name: Guess the group
+      vars:
+        detected_group: ""
+      block:
+        - name: Match lyrics to group
+          set_fact:
+            detected_group: >-
+              {% for group, keywords in keyword_map.items() %}
+                {% for keyword in keywords %}
+                  {% if keyword in item.stdout | lower %}
+                    {{ group }}
+                    {% break %}
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+        - name: Print result
+          debug:
+            msg: "The song '{{ item.item.path }}' belongs to '{{ detected_group | default('Unknown') }}'"
+      loop: "{{ lyric_contents.results }}"
