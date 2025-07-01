@@ -1,6 +1,7 @@
 ---
 - name: Guess the group from lyrics
   hosts: localhost
+  connection: local
   gather_facts: no
   vars:
     lyrics_path: "./"
@@ -23,22 +24,24 @@
       loop: "{{ lyric_files.files }}"
       register: lyric_contents
 
-    - name: Guess the group
+    - name: Detect and print group
       vars:
-        detected_group: ""
-      block:
-        - name: Match lyrics to group
-          set_fact:
-            detected_group: >-
-              {% for group, keywords in keyword_map.items() %}
-                {% for keyword in keywords %}
-                  {% if keyword in item.stdout | lower %}
-                    {{ group }}
-                    {% break %}
-                  {% endif %}
-                {% endfor %}
-              {% endfor %}
-        - name: Print result
-          debug:
-            msg: "The song '{{ item.item.path }}' belongs to '{{ detected_group | default('Unknown') }}'"
+        detected_group: >-
+          {% set match = 'Unknown' %}
+          {% for group, keywords in keyword_map.items() %}
+            {% for keyword in keywords %}
+              {% if keyword in item.stdout | lower %}
+                {% set match = group %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+            {% if match != 'Unknown' %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          {{ match }}
       loop: "{{ lyric_contents.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+      debug:
+        msg: "The song '{{ item.item.path }}' likely belongs to '{{ detected_group }}'"
